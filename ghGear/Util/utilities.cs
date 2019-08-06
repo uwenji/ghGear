@@ -11,12 +11,13 @@ namespace ghGear.Util
 {
     class Gears
     {
-        private readonly List<string> texts = new List<string>();
-        private readonly List<Point3d> locations = new List<Point3d>();
-        private readonly List<double> sizes = new List<double>();
+        public List<string> texts = new List<string>();
+        public List<Point3d> locations = new List<Point3d>();
+        public List<double> sizes = new List<double>();
         public List<double> radius = new List<double>();
         //end declare
-        Curve involute(Circle baseCircle, double Angle, Circle max, Circle min)
+
+        public Curve involute(Circle baseCircle, double Angle, Circle max, Circle min)
         {
             List<Point3d> points = new List<Point3d>();
             double r = baseCircle.Radius;
@@ -43,7 +44,7 @@ namespace ghGear.Util
 
         }
 
-        List<Circle> buildPitch(Polyline poly, double bR)
+        public List<Circle> buildPitch(Polyline poly, double bR)
         {
             List<Circle> pitchs = new List<Circle>();
 
@@ -63,7 +64,7 @@ namespace ghGear.Util
             return pitchs;
         }
 
-        Circle buildPitchFromRadius(Circle C, double bevelR, double pA, double rA, out Polyline Axe)
+        public Circle buildPitchFromRadius(Circle C, double bevelR, double pA, double rA, out Polyline Axe)
         {
             Point3d pP = C.PointAt(toRadian(rA)); //pitch point
             Vector3d nV = pP - C.Center; nV.Unitize(); //pitch circle normal
@@ -82,7 +83,7 @@ namespace ghGear.Util
             return new Circle(pln, bevelR);
         }
 
-        List<Curve> buildGear(List<Circle> C, double Teeth, double Angle, double profileShift, double addendum, double dedendum, out List<int> teethNumber)
+        public List<Curve> buildGear(List<Circle> C, double Teeth, double Angle, double profileShift, double addendum, double dedendum, out List<int> teethNumber)
         {
             List<Curve> curves = new List<Curve>();
             ArcCurve sC = new ArcCurve(C[0]);
@@ -441,7 +442,7 @@ namespace ghGear.Util
             return profile;
         }
 
-        Brep buildHelical(Curve Sectioin, Circle C, double Deg, double H, bool Solid)
+        public Brep buildHelical(Curve Sectioin, Circle C, double Deg, double H, bool Solid)
         {
             double angle = (H / Math.Tan(toRadian(Deg))) / (C.Radius * 2 * Math.PI);
             List<Curve> gears = new List<Curve>();

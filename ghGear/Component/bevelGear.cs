@@ -11,7 +11,7 @@ using Rhino.Geometry;
 
 namespace ghGear
 {
-    public class GearComponent : GH_Component
+    public class bevelGear : GH_Component
     {
         /// <summary>
         /// Each implementation of GH_Component must provide a public 
@@ -20,7 +20,7 @@ namespace ghGear
         /// Subcategory the panel. If you use non-existing tab or panel names, 
         /// new tabs/panels will automatically be created.
         /// </summary>
-        public GearComponent()
+        public bevelGear()
           : base("Gear", "Nickname",
               "Description",
               "Category", "Subcategory")
@@ -71,7 +71,7 @@ namespace ghGear
         /// </summary>
         public override Guid ComponentGuid
         {
-            get { return new Guid("a23c5eb6-43dd-4c86-bc7f-a9dc9ddeacab"); }
+            get { return new Guid("3362F94A-B2DB-475A-A319-7BE6943C0831"); }
         }
     }
 }

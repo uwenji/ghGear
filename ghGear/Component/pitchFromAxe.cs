@@ -11,7 +11,7 @@ using Rhino.Geometry;
 
 namespace ghGear
 {
-    public class GearComponent : GH_Component
+    public class pitchFromAxe : GH_Component
     {
         /// <summary>
         /// Each implementation of GH_Component must provide a public 
@@ -20,7 +20,7 @@ namespace ghGear
         /// Subcategory the panel. If you use non-existing tab or panel names, 
         /// new tabs/panels will automatically be created.
         /// </summary>
-        public GearComponent()
+        public pitchFromAxe()
           : base("Gear", "Nickname",
               "Description",
               "Category", "Subcategory")
@@ -71,7 +71,7 @@ namespace ghGear
         /// </summary>
         public override Guid ComponentGuid
         {
-            get { return new Guid("a23c5eb6-43dd-4c86-bc7f-a9dc9ddeacab"); }
+            get { return new Guid("B3E4DACD-8F3B-4582-B3C5-FCB51DB6ECFD"); }
         }
     }
 }
