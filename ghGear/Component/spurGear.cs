@@ -26,7 +26,6 @@ namespace ghGear
         double addendum;
         double dedendum;
 
-
         public spurGear()
           : base("SpurGear", "spurG",
               "Spur Gear from Circles",
@@ -38,7 +37,7 @@ namespace ghGear
         {
             pManager.AddCircleParameter("Circles", "C", "Circles for spur gears", GH_ParamAccess.list);
             pManager.AddNumberParameter("Teeth", "T", "Teeth number", GH_ParamAccess.item);
-            pManager.AddNumberParameter("Angle", "A", "pressure angle degree, default is 22.5 and range should 15 to 35", GH_ParamAccess.item, 22.5);
+            pManager.AddNumberParameter("Angle", "A", "pressure angle(Degree), default is 22.5 and range should 15 to 35", GH_ParamAccess.item, 22.5);
             pManager.AddNumberParameter("shift", "S", "Profile shift coefficient, from 0 to 0.5, default is 0.1", GH_ParamAccess.item, 0.1);
             pManager.AddNumberParameter("addendum", "ad", "addendum, 1.0 module", GH_ParamAccess.item, 1.0);
             pManager.AddNumberParameter("dedendum", "de", "dedendum, 1.25 module", GH_ParamAccess.item, 1.25);

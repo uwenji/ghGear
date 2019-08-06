@@ -13,62 +13,112 @@ namespace ghGear
 {
     public class pitchFromAxe : GH_Component
     {
-        /// <summary>
-        /// Each implementation of GH_Component must provide a public 
-        /// constructor without any arguments.
-        /// Category represents the Tab in which the component will appear, 
-        /// Subcategory the panel. If you use non-existing tab or panel names, 
-        /// new tabs/panels will automatically be created.
-        /// </summary>
+        List<string> texts = new List<string>();
+        List<Point3d> locations = new List<Point3d>();
+        List<double> sizes = new List<double>();
+        List<Circle> Pitches = new List<Circle>();
+        Polyline refAxe;
+        Curve outAxe;
+
+        Curve refC;
+        double Radius;
+
         public pitchFromAxe()
-          : base("Gear", "Nickname",
-              "Description",
-              "Category", "Subcategory")
+          : base("Axe2Pitch", "AxePitch",
+              "Make Pitch Circles from 3 Points base Polyline",
+              "Gears", "Utility")
         {
         }
 
-        /// <summary>
-        /// Registers all the input parameters for this component.
-        /// </summary>
         protected override void RegisterInputParams(GH_Component.GH_InputParamManager pManager)
         {
+            pManager.AddCurveParameter("Axe", "P", "Three Points Polyline", GH_ParamAccess.item);
+            pManager.AddNumberParameter("Radius", "R", "Radius of Base Circle (start point of polyline)", GH_ParamAccess.item);
         }
 
-        /// <summary>
-        /// Registers all the output parameters for this component.
-        /// </summary>
         protected override void RegisterOutputParams(GH_Component.GH_OutputParamManager pManager)
         {
+            pManager.AddCircleParameter("PitchCircle", "C", "Pitch Circles", GH_ParamAccess.list);
+            pManager.AddCurveParameter("AxePolyline", "L", "Polyline of Axe", GH_ParamAccess.item);
         }
 
-        /// <summary>
-        /// This is the method that actually does the work.
-        /// </summary>
-        /// <param name="DA">The DA object can be used to retrieve data from input parameters and 
-        /// to store data in output parameters.</param>
         protected override void SolveInstance(IGH_DataAccess DA)
         {
+            Util.Gears gear = new Util.Gears();
+            Pitches.Clear();
+            
+            DA.GetData<Curve>(0, ref refC);
+            DA.GetData<double>(1, ref Radius);
+            refC.TryGetPolyline(out refAxe);
+
+            Pitches = gear.buildPitch(refAxe, Radius);
+            outAxe = Curve.CreateInterpolatedCurve(new List<Point3d> { refAxe[0], refAxe[1], Pitches[1].Center }, 1);
+
+            DA.SetDataList(0, Pitches);
+            DA.SetData(1, outAxe);
+
+            texts = gear.texts;
+            locations = gear.locations;
+            sizes = gear.sizes;
         }
 
-        /// <summary>
-        /// Provides an Icon for every component that will be visible in the User Interface.
-        /// Icons need to be 24x24 pixels.
-        /// </summary>
+        public override BoundingBox ClippingBox
+        {
+            get
+            {
+                List<Point3d> points = new List<Point3d>();
+                foreach(Circle C in Pitches)
+                {
+                    Point3d[] pbox = C.BoundingBox.GetCorners();
+                    foreach(Point3d thisP in pbox)
+                    {
+                        points.Add(thisP);
+                    }
+                }
+                BoundingBox bbox = new BoundingBox(points);
+                return bbox;
+            }
+        }
+
+        public override void DrawViewportWires(IGH_PreviewArgs args)
+        {
+            base.DrawViewportWires(args);
+
+            if (texts.Count == 0)
+                return;
+
+            Plane plane;
+            args.Viewport.GetFrustumFarPlane(out plane);
+
+            for (int i = 0; i < texts.Count; i++)
+            {
+                string text = texts[i];
+                double size = sizes[i];
+                Point3d location = locations[i];
+                plane.Origin = location;
+
+                // Figure out the size. This means measuring the visible size in the viewport AT the current location.
+                double pixPerUnit;
+                Rhino.Display.RhinoViewport viewport = args.Viewport;
+                viewport.GetWorldToScreenScale(location, out pixPerUnit);
+
+                size = size / pixPerUnit;
+
+                Rhino.Display.Text3d drawText = new Rhino.Display.Text3d(text, plane, size);
+
+                args.Display.Draw3dText(drawText, args.WireColour);
+                drawText.Dispose();
+            }
+        }
+
         protected override System.Drawing.Bitmap Icon
         {
             get
             {
-                // You can add image files to your project resources and access them like this:
-                //return Resources.IconForThisComponent;
-                return null;
+                return Properties.Resources.pitchFromAxe;
             }
         }
 
-        /// <summary>
-        /// Each component must have a unique Guid to identify it. 
-        /// It is vital this Guid doesn't change otherwise old ghx files 
-        /// that use the old ID will partially fail during loading.
-        /// </summary>
         public override Guid ComponentGuid
         {
             get { return new Guid("B3E4DACD-8F3B-4582-B3C5-FCB51DB6ECFD"); }

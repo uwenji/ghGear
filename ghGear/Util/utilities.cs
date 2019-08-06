@@ -61,6 +61,9 @@ namespace ghGear.Util
             double secR = cBo.DistanceTo(pPt);
             Circle cB = new Circle(new Plane(cBo, VN, VB), secR); // circle B
             pitchs.Add(cA); pitchs.Add(cB);
+            texts = new List<string> { Math.Round(bR,2).ToString(), Math.Round(secR, 2).ToString() };
+            locations = new List<Point3d> { cA.Center, cB.Center };
+            sizes = new List<double> { bR * 3.0, secR * 3.0};
             return pitchs;
         }
 
@@ -79,8 +82,13 @@ namespace ghGear.Util
             Line lB = new Line(pln.Origin, pln.ZAxis);
             var ccx = Rhino.Geometry.Intersect.Intersection.LineLine(lA, lB, out tA, out tB, 1, false);
             Point3d LLX = lA.PointAt(tA); 
+
             Axe = new Polyline(new List<Point3d> { C.Center, LLX, pln.Origin });
-            return new Circle(pln, bevelR);
+            Circle bevelC = new Circle(pln, bevelR);
+            texts = new List<string> { C.Radius.ToString(), bevelR.ToString() };
+            locations = new List<Point3d> { C.Center, bevelC.Center };
+            sizes = new List<double> { C.Radius * 3.0, bevelR * 3.0 };
+            return bevelC;
         }
 
         public List<Curve> buildGear(List<Circle> C, double Teeth, double Angle, double profileShift, double addendum, double dedendum, out List<int> teethNumber)
