@@ -13,14 +13,12 @@ namespace ghGear
 {
     public class rack : GH_Component
     {
-        public List<string> texts = new List<string>();
-        public List<Point3d> locations = new List<Point3d>();
-        public List<double> sizes = new List<double>();
+        List<string> texts = new List<string>();
+        List<Point3d> locations = new List<Point3d>();
+        List<double> sizes = new List<double>();
         List<Curve> Rack = new List<Curve>();
 
         List<System.Object> LModules = new List<System.Object>();
-        List<Circle> Circles = new List<Circle>();
-        List<double> Modules = new List<double>();
         List<Line> Tangents = new List<Line>();
         double Teeth;
         double Angle;
@@ -56,7 +54,6 @@ namespace ghGear
         {
             Util.Gears gear = new Util.Gears();
             LModules = new List<System.Object>();
-            Circles = new List<Circle>();
             Tangents = new List<Line>();
             Rack = new List<Curve>();
 
@@ -69,9 +66,11 @@ namespace ghGear
 
             for (int i = 0; i < Tangents.Count; i++)
             {
-                System.Object obj = LModules[i];
+                System.Object obj = LModules[0];
                 if (LModules.Count - 1 < i)
                     obj = LModules[LModules.Count - 1];
+                else
+                    obj = LModules[i];
                 double n;
                 Circle c = new Circle();
                 if (GH_Convert.ToCircle(obj, ref c, GH_Conversion.Both))
