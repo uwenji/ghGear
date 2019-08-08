@@ -53,9 +53,9 @@ namespace ghGear
         protected override void SolveInstance(IGH_DataAccess DA)
         {
             Util.Gears gear = new Util.Gears();
-            Circles = new List<Circle>();
-            Spur = new List<Curve>();
-            Ratio = new List<double>();
+            Circles.Clear();
+            Spur.Clear();
+            Ratio.Clear();
             List<int> ratioInt = new List<int>();
             List<Circle> Pitch = new List<Circle>();
 
@@ -65,12 +65,10 @@ namespace ghGear
             DA.GetData<double>(3, ref shift);
             DA.GetData<double>(4, ref addendum);
             DA.GetData<double>(5, ref dedendum);
-            
+
             Spur = gear.buildGear(Circles, Teeth, Angle, shift, addendum, dedendum, out ratioInt);
-            foreach(int i in ratioInt)
-            {
-                Ratio.Add((double)i);
-            }
+            Ratio = new Util.GCD(ratioInt).getGCD();
+
             DA.SetDataList(0, Spur);
             Pitch = Circles;
             DA.SetDataList(1, Pitch);
@@ -88,7 +86,7 @@ namespace ghGear
                 foreach (Curve thisC in Spur)
                 {
                     Point3d[] pbox = thisC.GetBoundingBox(false).GetCorners();
-                    foreach(Point3d thisP in pbox)
+                    foreach (Point3d thisP in pbox)
                     {
                         points.Add(thisP);
                     }
@@ -104,7 +102,7 @@ namespace ghGear
 
             if (texts.Count == 0)
                 return;
-            
+
             Plane plane;
             args.Viewport.GetFrustumFarPlane(out plane);
 
@@ -123,12 +121,12 @@ namespace ghGear
                 size = size / pixPerUnit;
 
                 Rhino.Display.Text3d drawText = new Rhino.Display.Text3d(text, plane, size);
-                
+
                 args.Display.Draw3dText(drawText, args.WireColour);
                 drawText.Dispose();
             }
         }
-        
+
         protected override System.Drawing.Bitmap Icon
         {
             get
@@ -139,7 +137,7 @@ namespace ghGear
 
         public override Guid ComponentGuid
         {
-            get { return new Guid("a23c5eb6-43dd-4c86-bc7f-a9dc9ddeacab"); }
+            get { return new Guid("7A88B469-E524-4BB8-82D5-1737CF6BB28F"); }
         }
     }
 }

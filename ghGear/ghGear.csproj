@@ -70,17 +70,20 @@
       <DesignTime>True</DesignTime>
       <DependentUpon>Resources.resx</DependentUpon>
     </Compile>
+    <Compile Include="Util\GCD.cs" />
     <Compile Include="Util\utilities.cs" />
   </ItemGroup>
   <ItemGroup>
     <EmbeddedResource Include="Properties\Resources.resx">
       <Generator>ResXFileCodeGenerator</Generator>
       <LastGenOutput>Resources.Designer.cs</LastGenOutput>
+      <SubType>Designer</SubType>
     </EmbeddedResource>
   </ItemGroup>
   <ItemGroup>
     <Content Include="Resources\bevelGear.png" />
-    <Content Include="Resources\gear.bmp" />
+    <Content Include="Resources\gear.png" />
+    <Content Include="Resources\gearBMP.bmp" />
     <Content Include="Resources\helicalGear.png" />
     <Content Include="Resources\helicalRack.png" />
     <Content Include="Resources\pitchFromAngle.png" />

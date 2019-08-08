@@ -17,6 +17,66 @@ namespace ghGear.Util
         public List<double> radius = new List<double>();
         //end declare
 
+        #region law of cossin
+        public enum TrigLaw
+        {
+            SSS,
+            SAS_B_alpha_C
+        }
+        public enum Traingle
+        {
+            Angle,
+            Side,
+            ALL
+        }
+        public List<double> Trigonometry(double U, double V, double W, TrigLaw law, Traingle GET)
+        {
+            double A = new double();
+            double B = new double();
+            double C = new double();
+            double alpha = new double();
+            double beta = new double();
+            double gamma = new double();
+            switch (law)
+            {
+                case TrigLaw.SSS:
+                    A = U;
+                    B = V;
+                    C = W;
+                    gamma = Math.Acos((A * A + B * B - C * C) / (2 * A * B));
+                    beta = Math.Acos((A * A + C * C - B * B) / (2 * A * C));
+                    alpha = Math.Acos((B * B + C * C - A * A) / (2 * B * C));
+                    break;
+                case TrigLaw.SAS_B_alpha_C:
+                    //{\displaystyle c^{2}=a^{2}+b^{2}-2ab\cos \gamma ,}
+                    alpha = V;
+                    B = U;
+                    C = W;
+                    A = Math.Sqrt(B * B + C * C - (2 * B * C) * Math.Cos(alpha));
+                    beta = Math.Acos((A * A + C * C - B * B) / (2 * A * C));
+                    gamma = Math.Acos((A * A + B * B - C * C) / (2 * A * B));
+                    break;
+            }
+            List<double> ans = new List<double>();
+            switch (GET)
+            {
+                case Traingle.Angle:
+                    ans.Clear();
+                    ans = new List<double> { alpha, beta, gamma };
+                    break;
+                case Traingle.Side:
+                    ans.Clear();
+                    ans = new List<double> { A, B, C };
+                    break;
+                case Traingle.ALL:
+                    ans.Clear();
+                    ans = new List<double> { A, B, C, alpha, beta, gamma };
+                    break;
+            }
+            return ans;
+        }
+        #endregion
+
         public Curve involute(Circle baseCircle, double Angle, Circle max, Circle min)
         {
             List<Point3d> points = new List<Point3d>();
@@ -63,7 +123,7 @@ namespace ghGear.Util
             pitchs.Add(cA); pitchs.Add(cB);
             texts = new List<string> { Math.Round(bR,2).ToString(), Math.Round(secR, 2).ToString() };
             locations = new List<Point3d> { cA.Center, cB.Center };
-            sizes = new List<double> { bR * 3.0, secR * 3.0};
+            sizes = new List<double> { bR * 2.0, secR * 2.0};
             return pitchs;
         }
 
@@ -87,8 +147,74 @@ namespace ghGear.Util
             Circle bevelC = new Circle(pln, bevelR);
             texts = new List<string> { C.Radius.ToString(), bevelR.ToString() };
             locations = new List<Point3d> { C.Center, bevelC.Center };
-            sizes = new List<double> { C.Radius * 3.0, bevelR * 3.0 };
+            sizes = new List<double> { C.Radius * 2.0, bevelR * 2.0 };
             return bevelC;
+        }
+
+        public Brep[,] pitchCone(List<Circle> C, Polyline Poly, List<double> shifts, double Depth, Point3d start, Point3d end, out ArcCurve[,] coneCircle)
+        {
+            var ccx = Rhino.Geometry.Intersect.Intersection.CurveCurve(new ArcCurve(C[0]), new ArcCurve(C[1]), 1.0, 1.0);
+            Point3d pitch = ccx[0].PointA;
+            /*[0]  b     [1] c _C_ a
+             *    |\           \  |
+             *   C| \A         A\ |B
+             *    | _\           \|
+             *   a  B  c = pitch = b
+             */
+            //Triangle: [0]_A, [1]_B = r, [2]_C = h, [3]_alpha = 90, [4]_beta, [5]_gamma 
+            List<double> TA = Trigonometry(C[0].Radius, Math.PI * 0.5, C[0].Center.DistanceTo(Poly[1]), TrigLaw.SAS_B_alpha_C, Traingle.ALL);
+            List<double> TB = Trigonometry(C[1].Radius, Math.PI * 0.5, C[1].Center.DistanceTo(Poly[1]), TrigLaw.SAS_B_alpha_C, Traingle.ALL);
+            List<List<double>> TT = new List<List<double>> { TA, TB };
+
+            double map = (TA[2] - Depth) / TA[2]; //TA[2] is C = Heigh
+            List<double> ta = new List<double> { TA[0] * map, TA[1] * map, TA[2] * map, TA[3], TA[4], TA[5] }; //456 is angle
+            List<double> tb = new List<double> { TB[0] * map, TB[1] * map, TB[2] * map, TB[3], TB[4], TB[5] };
+            List<List<double>> tt = new List<List<double>> { ta, tb };
+            //compute back cone angle
+            //TCone: [0]_A = profile, [1]_B = shiftA, [2]_C = shiftB, [3]_a = sumBeta, [4]_b = c1A, [5]_r = c2A 
+            double sumBeta = TA[4] + TB[4];
+            List<double> TCone = Trigonometry(shifts[0], sumBeta, shifts[1], TrigLaw.SAS_B_alpha_C, Traingle.ALL);
+
+            //cone surface
+            coneCircle = new ArcCurve[2, 2];
+            Brep[,] cones = new Brep[2, 2];
+            for (int i = 0; i < C.Count; i++)
+            {
+
+
+                //lower Circle
+                Circle BC = new Circle(C[i].Plane, C[i].Radius - shifts[i]);
+                double h = shifts[i] * 3 * Math.Sin(TCone[4]);
+                double r = shifts[i] * 3 * Math.Cos(TCone[4]);
+                Circle TC = new Circle(new Plane(C[i].Center + C[i].Plane.ZAxis * h, C[i].Plane.XAxis, C[i].Plane.YAxis), BC.Radius + r);
+
+                coneCircle[i, 0] = new ArcCurve(BC);
+                List<Curve> Circles = new List<Curve> { new ArcCurve(BC), new ArcCurve(TC) };
+                cones[i, 0] = Brep.CreateFromLoft(Circles, start, end, LoftType.Normal, false)[0];
+
+                //upper circle
+                Plane hPln = new Plane(C[i].Center + (C[i].Plane.ZAxis * (TT[i][2] - tt[i][2])), C[i].Plane.XAxis, C[i].Plane.YAxis);
+                double hshift = shifts[i] * map;
+                Circle bc = new Circle(hPln, tt[i][1] - hshift);
+                double hh = h * map;
+                double hr = r * map;
+                Circle tc = new Circle(new Plane((bc.Center + bc.Plane.ZAxis * hh), C[i].Plane.XAxis, C[i].Plane.YAxis), bc.Radius + hr);
+
+                coneCircle[i, 1] = new ArcCurve(bc);
+                List<Curve> circles = new List<Curve> { new ArcCurve(bc), new ArcCurve(tc) };
+                cones[i, 1] = Brep.CreateFromLoft(circles, start, end, LoftType.Normal, false)[0];
+
+            }
+
+            return cones;
+        }
+
+        public Mesh CurveToMesh(Curve[] Pair)
+        {
+            Mesh GM = new Mesh();
+            
+
+            return GM;
         }
 
         public List<Curve> buildGear(List<Circle> C, double Teeth, double Angle, double profileShift, double addendum, double dedendum, out List<int> teethNumber)
@@ -141,10 +267,10 @@ namespace ghGear.Util
                 //display
                 locations.Add(tip.PointAtNormalizedLength(0.5)); //tip
                 texts.Add(Math.Round(tip.GetLength(), 2).ToString());
-                sizes.Add((addendum + dedendum) * 5);
+                sizes.Add((addendum + dedendum) * 4);
                 locations.Add(profile.PointAtStart); //profile
                 texts.Add(Math.Round(profile.GetLength(), 2).ToString());
-                sizes.Add((addendum + dedendum) * 5);
+                sizes.Add((addendum + dedendum) * 4);
 
                 //teeth
                 mirProfile.Reverse();
@@ -317,7 +443,7 @@ namespace ghGear.Util
             List<Curve> helicals = new List<Curve>();
             if (hTime / Math.Abs(hTime) == 1)
             {
-                for (int i = -1; i < time + 1; i++)
+                for (int i = -1; i < time; i++)
                 {
                     Transform duplicate = Transform.Translation(dir * Pitch * i);
                     Curve thisC = rack.DuplicateCurve();
@@ -327,7 +453,7 @@ namespace ghGear.Util
             }
             else
             {
-                for (int i = 0; i < time + 2; i++)
+                for (int i = 0; i < time + 1; i++)
                 {
                     Transform duplicate = Transform.Translation(dir * Pitch * i);
                     Curve thisC = rack.DuplicateCurve();
@@ -335,6 +461,8 @@ namespace ghGear.Util
                     helicals.Add(thisC);
                 }
             }
+
+
             Curve helical = Curve.JoinCurves(helicals, 1, true)[0];
 
             rack = Curve.JoinCurves(racks, 1, true)[0];
@@ -477,12 +605,127 @@ namespace ghGear.Util
                 return profile;
             }
         }
-        double toRadian(double Angle)
+
+        public List<Curve[]> buildBevelGear(List<Circle> C, Polyline L, Brep[,] S, double Teeth, double Angle, double profileShift, double addendum, double dedendum, out List<int> teethNumber)
+        {
+            ArcCurve sC = new ArcCurve(C[0]);
+            if (C.Count > 1)
+                sC = smallestCircle(C);
+
+            double m = (2 * sC.Radius) / Teeth;
+            addendum = addendum * m;
+            dedendum = dedendum * m;
+            List<Curve[]> curves = new List<Curve[]>();
+            teethNumber = new List<int>();
+            //each circle to gear
+            for (int i = 0; i < C.Count; i++)
+            {
+                Circle baseCir = new Circle(C[i].Plane, C[i].Radius * Math.Cos(toRadian(Angle)));
+                Circle addCir = new Circle(C[i].Plane, C[i].Radius + addendum);
+                Circle dedCir = new Circle(C[i].Plane, C[i].Radius - dedendum);
+                Curve profile = involute(baseCir, Angle, addCir, dedCir);
+
+                int teethCount = (int)(Teeth * (C[i].Radius / sC.Radius)); // teeth number
+                teethNumber.Add(teethCount);
+                //mirror profile
+                Vector3d newX = C[i].Plane.XAxis;
+                //the thickness of gear, should be halt of pitch angle
+                if (profileShift != 0)
+                    newX.Rotate((Math.PI + profileShift * Math.PI * Math.Tan(Angle)) / (double)teethCount, C[i].Normal); //circular pitch
+                else
+                    newX.Rotate(Math.PI / teethCount, C[i].Normal);
+                Curve mirProfile = profile.DuplicateCurve();
+                Transform mirror = Transform.Mirror(new Plane(C[i].Center, newX + C[i].Plane.XAxis, C[i].Normal));
+                mirProfile.Transform(mirror);
+
+                //align the profile
+                var ccx = Rhino.Geometry.Intersect.Intersection.CurveCurve(profile, new ArcCurve(C[i]), 1, 1);
+                Transform aligned = Transform.Rotation(ccx[0].PointA - C[i].Center, C[i].Plane.XAxis, C[i].Center);
+                profile.Transform(aligned);
+                mirProfile.Transform(aligned);
+
+                //tip and buttom arc
+                double addAngle = Vector3d.VectorAngle(profile.PointAtEnd - C[i].Center, mirProfile.PointAtEnd - C[i].Center);
+                double dedAngle = (1.0 / (double)teethCount) * Math.PI * 2 - Vector3d.VectorAngle(profile.PointAtStart - C[i].Center, mirProfile.PointAtStart - C[i].Center);
+                Plane addPln = new Plane(C[i].Center, profile.PointAtEnd - C[i].Center, C[i].Plane.YAxis);
+                Plane dedPln = new Plane(C[i].Center, mirProfile.PointAtStart - C[i].Center, C[i].Plane.YAxis);
+                ArcCurve tip = new ArcCurve(new Arc(addPln, C[i].Radius + addendum, addAngle));
+                ArcCurve buttom = new ArcCurve(new Arc(dedPln, C[i].Radius - dedendum, dedAngle));
+
+                //teeth
+                mirProfile.Reverse();
+                List<Curve> CS = new List<Curve> { profile, tip, mirProfile, buttom };
+                Curve teethC = Curve.JoinCurves(CS, 0.1, true)[0];
+
+                //bevel: teeth project to one tip find intersection on cone.
+                NurbsCurve nurbsT = teethC.ToNurbsCurve();
+                NurbsCurve nurbs_t = teethC.ToNurbsCurve();
+                List<Point3d[]> rayPts = new List<Point3d[]>();
+
+                Line displayTip = new Line();
+                for (int j = 0; j < nurbsT.Points.Count; j++)
+                {
+                    Point3d thisP = nurbsT.Points[j].Location;
+                    Point3d lsx_A = Rhino.Geometry.Intersect.Intersection.RayShoot(new Ray3d(thisP, L[1] - thisP), new List<GeometryBase> { S[i, 0] }, (int)thisP.DistanceTo(L[1]))[0];
+                    Point3d lsx_B = Rhino.Geometry.Intersect.Intersection.RayShoot(new Ray3d(thisP, L[1] - thisP), new List<GeometryBase> { S[i, 1] }, (int)thisP.DistanceTo(L[1]))[0];
+                    Point3d[] lsx = new Point3d[2] { lsx_A, lsx_B };
+                    rayPts.Add(lsx);
+
+                    //========================display=====================
+
+                    if (thisP == tip.PointAtStart)
+                    {
+                        displayTip.From = lsx[1];
+                    }
+                    if (thisP == tip.PointAtEnd)
+                    {
+                        displayTip.To = lsx[1];
+                    }
+
+                }
+                //show upper gear tip
+                locations.Add(displayTip.From); //tip
+                texts.Add(Math.Round(displayTip.Length, 2).ToString());
+                sizes.Add((addendum + dedendum) * 5);
+
+
+                for (int j = 0; j < nurbsT.Points.Count; j++)
+                {
+                    nurbsT.Points.SetPoint(j, rayPts[j][0].X, rayPts[j][0].Y, rayPts[j][0].Z, nurbsT.Points[j].Weight);
+                }
+                for (int j = 0; j < nurbs_t.Points.Count; j++)
+                {
+                    nurbs_t.Points.SetPoint(j, rayPts[j][1].X, rayPts[j][1].Y, rayPts[j][1].Z, nurbs_t.Points[j].Weight);
+                }
+
+                //polar array
+                List<Curve> Profiles = new List<Curve>();
+                List<Curve> profiles = new List<Curve>();
+                for (int j = 0; j < teethCount; j++)
+                {
+                    Curve presentProfile = nurbsT.DuplicateCurve();
+                    Curve presentProfile_s = nurbs_t.DuplicateCurve();
+                    double step = ((double)j / (double)teethCount) * Math.PI * 2;
+                    Transform rotate = Transform.Rotation(step, C[i].Normal, C[i].Center);
+                    presentProfile.Transform(rotate);
+                    presentProfile_s.Transform(rotate);
+
+                    Profiles.Add(presentProfile);
+                    profiles.Add(presentProfile_s);
+                }
+                Curve[] bevelC = new Curve[] { Curve.JoinCurves(Profiles, 0.01, true)[0], Curve.JoinCurves(profiles, 1, true)[0] };
+                curves.Add(bevelC);
+            }
+
+            return curves;
+        }
+
+        public double toRadian(double Angle)
         {
             return ((Angle % 360.0) / 360.0) * Math.PI * 2;
         }
 
-        ArcCurve smallestCircle(List<Circle> C)
+        public ArcCurve smallestCircle(List<Circle> C)
         {
             double r = -1;
             int id = -1;
@@ -498,50 +741,6 @@ namespace ghGear.Util
             return new ArcCurve(C[id]);
         }
 
-        //show ratio
-        public class GCD
-        {
-            public double[] numbers;
-            public GCD(List<double> elements)
-            {
-                numbers = new double[elements.Count];
-                for (int i = 0; i < elements.Count; i++)
-                {
-                    numbers[i] = (int)elements[i];
-                }
-            }
-            public double gcd(double a, double b)
-            {
-                if (a == 0)
-                    return b;
-                return gcd(b % a, a);
-            }
-            public String findGCD()
-            {
-                String ratio = "";
-                double result = numbers[0];
-                int id = 0;
-                for (int i = 0; i < numbers.Length; i++)
-                {
-                    if (numbers[i] < result) { result = numbers[i]; id = i; }
-                }
-
-                for (int i = 0; i < numbers.Length; i++)
-                {
-                    if (i < numbers.Length - 1)
-                    {
-                        result = gcd(numbers[i], result);
-                        ratio += (numbers[i] / result).ToString();
-                        ratio += ":";
-                    }
-                    else
-                    {
-                        result = gcd(numbers[i], result);
-                        ratio += (numbers[i] / result).ToString();
-                    }
-                }
-                return ratio;
-            }
-        }
     }
+
 }
