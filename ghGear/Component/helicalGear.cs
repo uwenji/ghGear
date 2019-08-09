@@ -57,10 +57,19 @@ namespace ghGear
             DA.GetData<double>(2, ref Angle);
             DA.GetData<double>(3, ref Heigh);
             DA.GetData<Boolean>(4, ref ifSolid);
-
+            int flip = 0;
             for (int i = 0; i < Profiles.Count; i++)
             {
-                Helical.Add(gear.buildHelical(Profiles[i], Pitches[i], 90.0 - Angle, Heigh, ifSolid));
+                if(flip == 0)
+                {
+                    Helical.Add(gear.buildHelical(Profiles[i], Pitches[i], 90.0 - Angle, Heigh, ifSolid));
+                    flip -= 1;
+                }
+                else
+                {
+                    Helical.Add(gear.buildHelical(Profiles[i], Pitches[i], 90.0 + Angle, Heigh, ifSolid));
+                    flip += 1;
+                }
             }
 
             DA.SetDataList(0, Helical);
