@@ -121,7 +121,7 @@ namespace ghGear
 
         public override Guid ComponentGuid
         {
-            get { return new Guid("B3E4DACD-8F3B-4582-B3C5-FCB51DB6ECFD"); }
+            get { return new Guid("5B78007B-2363-48F6-B566-6711F3641172"); }
         }
     }
 }

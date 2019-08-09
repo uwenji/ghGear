@@ -11,23 +11,22 @@ using Rhino.Geometry;
 
 namespace ghGear
 {
-    public class bevelGear : GH_Component
+    public class BevelGearComponent : GH_Component
     {
         public List<string> texts = new List<string>();
         public List<Point3d> locations = new List<Point3d>();
         public List<double> sizes = new List<double>();
-        List<Curve> Gears = new List<Curve>();
-        Brep[,] refCone;
-        List<Mesh> GearMeshes = new List<Mesh>();
+        List<GeometryBase> Gears = new List<GeometryBase>();
         List<double> Ratio = new List<double>();
 
         List<Circle> Circles = new List<Circle>();
+        List<double> Holes = new List<double>();
         Polyline refAxe;
         Curve refC;
         double Teeth, Depth, Angle, shift, addendum, dedendum;
         bool showOpt;
 
-        public bevelGear()
+        public BevelGearComponent()
           : base("BevelGear", "BevelG",
               "Build Bevel Gear from Pitch Circles",
               "Gears", "Build")
@@ -36,105 +35,89 @@ namespace ghGear
 
         protected override void RegisterInputParams(GH_Component.GH_InputParamManager pManager)
         {
-            pManager.AddCircleParameter("Circle", "C", "Pair Pitch Circles", GH_ParamAccess.list);
+            pManager.AddCircleParameter("Circle", "C", "Pair of Pitch Circles", GH_ParamAccess.list);
             pManager.AddCurveParameter("Polyline", "L", "Three points Polyline", GH_ParamAccess.item);
             pManager.AddNumberParameter("Teeth", "T", "Teeth Number", GH_ParamAccess.item);
-            pManager.AddNumberParameter("Depth", "D", "Teeth Number", GH_ParamAccess.item);
+            pManager.AddNumberParameter("Depth", "D", "Depth", GH_ParamAccess.item);
+            pManager.AddNumberParameter("HoleSize", "H", "Hole size in daimeter", GH_ParamAccess.list);
             pManager.AddNumberParameter("Angle", "A", "Pressure Angle (Degree)", GH_ParamAccess.item, 22.5);
             pManager.AddNumberParameter("shift", "S", "Profile shift coefficient, from 0 to 0.5, default is 0.1", GH_ParamAccess.item, 0.1);
-            pManager.AddNumberParameter("addendum", "ad", "addendum, 1.0 module", GH_ParamAccess.item, 1.0);
-            pManager.AddNumberParameter("dedendum", "de", "dedendum, 1.25 module", GH_ParamAccess.item, 1.25);
+            pManager.AddNumberParameter("addendum", "ad", "addendum, default 0.95", GH_ParamAccess.item, 0.95);
+            pManager.AddNumberParameter("dedendum", "de", "dedendum, default 1.25", GH_ParamAccess.item, 1.25);
             pManager.AddBooleanParameter("option", "opt", "0= Curve, 1=surface, 2=mesh", GH_ParamAccess.item, false);
         }
 
         protected override void RegisterOutputParams(GH_Component.GH_OutputParamManager pManager)
         {
             pManager.AddGenericParameter("Gears", "G", "Gears", GH_ParamAccess.list);
-            pManager.AddCurveParameter("Pitch", "P", "Pitch", GH_ParamAccess.list);
+            pManager.AddCircleParameter("Pitch", "P", "Pitch", GH_ParamAccess.list);
             pManager.AddIntegerParameter("Ratio", "R", "Ratio", GH_ParamAccess.list);
-            pManager.AddBrepParameter("RefCone", "rC", "reference cone", GH_ParamAccess.list);
         }
 
         protected override void SolveInstance(IGH_DataAccess DA)
         {
-            Util.Gears gear = new Util.Gears();
+            Holes.Clear();
             Circles.Clear();
+            Util.BevelGear gear = new Util.BevelGear();
             Gears.Clear();
-            GearMeshes.Clear();
+            Circles.Clear();
             Ratio.Clear();
             List<int> ratioInt = new List<int>();
-            List<Circle> Pitch = new List<Circle>();
 
-            DA.GetDataList<Circle>("Circle", Circles);
-            DA.GetData<Curve>("Polyline", ref refC);
-            DA.GetData<double>("Teeth", ref Teeth);
-            DA.GetData<double>("Depth", ref Angle);
-            DA.GetData<double>(4, ref Angle);
-            DA.GetData<double>(5, ref shift);
-            DA.GetData<double>(6, ref addendum);
-            DA.GetData<double>(7, ref dedendum);
-            DA.GetData<bool>("option", ref showOpt);
+            DA.GetDataList<Circle>(0, Circles);
+            DA.GetData<Curve>(1, ref refC);
+            DA.GetData<double>(2, ref Teeth);
+            DA.GetData<double>(3, ref Depth);
+            DA.GetDataList<double>(4, Holes);
+            DA.GetData<double>(5, ref Angle);
+            DA.GetData<double>(6, ref shift);
+            DA.GetData<double>(7, ref addendum);
+            DA.GetData<double>(8, ref dedendum);
+            DA.GetData<bool>(9, ref showOpt);
             refC.TryGetPolyline(out refAxe);
-            
-            //main code
-            double m = 2 * gear.smallestCircle(Circles).Radius / Teeth;
+
+            //=============main code=============
+            double m = 2 * gear.smallestCircle(Circles).Radius / Teeth;  //module
+
+            //pitchCone
             List<double> coneOffset = new List<double>();
-            foreach(Circle thisC in Circles)
+            for(int i = 0; i < Circles.Count; i++)
             {
-                coneOffset.Add(2.5 * m);
+                coneOffset.Add(5 * m);
             }
-            ArcCurve[,] coneCircles = new ArcCurve[2, 2];
-            refCone = gear.pitchCone(Circles, refAxe, coneOffset, Depth, Point3d.Unset, Point3d.Unset, out coneCircles);
-            List<Curve[]> profiles = new List<Curve[]>();
-            profiles = gear.buildBevelGear(Circles, refAxe, refCone, Teeth, Angle, shift, addendum, dedendum, out ratioInt);
+            
+            gear.PitchCones(Circles, refAxe, coneOffset, Depth, Holes);
+
+            //build bevel gear profile
+            gear.buildBevelGear(Circles, refAxe, Teeth, Angle, shift, addendum, dedendum, out ratioInt);
+
+            //ratio
             Ratio = new Util.GCD(ratioInt).getGCD();
+
+            //from section to mesh
+            gear.LoftGearFromCurve();
+
+
+            //pass to output, G is profiles or 
             if (showOpt)
             {
-                GearMeshes = new List<Mesh>();
-                DA.SetDataList(0, GearMeshes);
+                DA.SetDataList(0, gear.bevelMeshes);
             }
             else
             {
-                foreach(Curve[] arrC in profiles)
-                {
-                    foreach(Curve thisC in arrC)
-                    {
-                        Gears.Add(thisC);
-                    }
-                }
-                DA.SetDataList(0, Gears);
-                
+                DA.SetDataList(0, gear.outBevelProfiles);
             }
-            
-            Pitch = Circles;
-            List<Brep> cones = new List<Brep> { refCone[0, 0], refCone[0, 1], refCone[1, 1], refCone[1, 1] };
-            DA.SetDataList(1, Pitch);
-            DA.SetDataList(2, Ratio);
-            DA.SetDataList(3, cones);
 
+            
+            DA.SetDataList(1, gear.profileCircles);
+            DA.SetDataList(2, Ratio);
+
+            //display
             texts = gear.texts;
             locations = gear.locations;
             sizes = gear.sizes;
         }
 
-        public override BoundingBox ClippingBox
-        {
-            get
-            {
-                List<Point3d> points = new List<Point3d>();
-                foreach (Curve thisC in Gears)
-                {
-                    Point3d[] pbox = thisC.GetBoundingBox(false).GetCorners();
-                    foreach (Point3d thisP in pbox)
-                    {
-                        points.Add(thisP);
-                    }
-                }
-                
-                BoundingBox bbox = new BoundingBox(points);
-                return bbox;
-            }
-        }
 
         public override void DrawViewportWires(IGH_PreviewArgs args)
         {
@@ -165,17 +148,8 @@ namespace ghGear
                 drawText.Dispose();
             }
         }
+        
 
-        public override void DrawViewportMeshes(IGH_PreviewArgs args)
-        {
-            base.DrawViewportMeshes(args);
-            /*
-            args.Display.DrawBrepWires(refCone[0, 0], args.WireColour);
-            args.Display.DrawBrepWires(refCone[0, 1], args.WireColour);
-            args.Display.DrawBrepWires(refCone[1, 0], args.WireColour);
-            args.Display.DrawBrepWires(refCone[1, 1], args.WireColour);
-            */
-        }
 
         protected override System.Drawing.Bitmap Icon
         {
@@ -188,7 +162,7 @@ namespace ghGear
 
         public override Guid ComponentGuid
         {
-            get { return new Guid("3362F94A-B2DB-475A-A319-7BE6943C0831"); }
+            get { return new Guid("F9463E56-75E2-4CB3-B00F-79DE51D0D311"); }
         }
     }
 }

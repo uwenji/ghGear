@@ -57,7 +57,7 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="Component\helicalRack.cs" />
-    <Compile Include="Component\bevelGear.cs" />
+    <Compile Include="Component\BevelGearComponent.cs" />
     <Compile Include="Component\helicalGear.cs" />
     <Compile Include="Component\pitchFromAxe.cs" />
     <Compile Include="Component\rack.cs" />
@@ -70,6 +70,7 @@
       <DesignTime>True</DesignTime>
       <DependentUpon>Resources.resx</DependentUpon>
     </Compile>
+    <Compile Include="Util\BevelGear.cs" />
     <Compile Include="Util\GCD.cs" />
     <Compile Include="Util\utilities.cs" />
   </ItemGroup>
