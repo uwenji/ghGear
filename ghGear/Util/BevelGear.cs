@@ -240,7 +240,7 @@ namespace ghGear.Util
             for (int i = 0; i < bevelProfiles.Count; i++) 
             {
                 Mesh gear = new Mesh();
-                for(int j = 0; j < bevelProfiles[i][0].Points.Count -1; j++)//each mesh vertices
+                for(int j = 0; j < bevelProfiles[i][0].Points.Count ; j++)//each mesh vertices
                 {
                     Point3d thisP = bevelProfiles[i][0].Points[j].Location; //S
                     gear.Vertices.Add(thisP);
@@ -257,10 +257,10 @@ namespace ghGear.Util
 
                 int V = 4 + 2;
                 List<MeshFace> gearFaces = new List<MeshFace>();
-                for (int k = 0; k < bevelProfiles[i][0].Points.Count-2; k++)
+                for (int k = 0; k < bevelProfiles[i][0].Points.Count-1; k++)
                 {
                     
-                    if (k < bevelProfiles[i][0].Points.Count - 2)
+                    if (k < bevelProfiles[i][0].Points.Count - 1)
                     {
                         int _this = -1;
                         for (int j = 0; j < V -1; j++)
@@ -277,10 +277,10 @@ namespace ghGear.Util
                     {
                         //Debug.WriteLine(k.ToString());
 
-                        for (int j = 0; j < V-1; j++)
+                        for (int n = 0; n < V-1; n++)
                         {
-                            int _this = k * V + j;
-                            MeshFace thisF = new MeshFace(_this, j, j + 1, _this + 1);
+                            int _this = k * V + n;
+                            MeshFace thisF = new MeshFace(_this, n, n + 1, _this + 1);
                             gearFaces.Add(thisF);
                         }
                         gearFaces.Add(new MeshFace(k*V + V-1, V-1, 0, k+V));
