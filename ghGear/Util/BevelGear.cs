@@ -240,7 +240,7 @@ namespace ghGear.Util
             for (int i = 0; i < bevelProfiles.Count; i++) 
             {
                 Mesh gear = new Mesh();
-                for(int j = 0; j < bevelProfiles[i][0].Points.Count; j++)//each mesh vertices
+                for(int j = 0; j < bevelProfiles[i][0].Points.Count -1; j++)//each mesh vertices
                 {
                     Point3d thisP = bevelProfiles[i][0].Points[j].Location; //S
                     gear.Vertices.Add(thisP);
@@ -257,10 +257,10 @@ namespace ghGear.Util
 
                 int V = 4 + 2;
                 List<MeshFace> gearFaces = new List<MeshFace>();
-                for (int k = 0; k < bevelProfiles[i][0].Points.Count; k++)
+                for (int k = 0; k < bevelProfiles[i][0].Points.Count-2; k++)
                 {
                     
-                    if (k < bevelProfiles[i][0].Points.Count - 1)
+                    if (k < bevelProfiles[i][0].Points.Count - 2)
                     {
                         int _this = -1;
                         for (int j = 0; j < V -1; j++)
