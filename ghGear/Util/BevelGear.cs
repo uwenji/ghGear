@@ -286,6 +286,7 @@ namespace ghGear.Util
                         gearFaces.Add(new MeshFace(k*V + V-1, V-1, 0, k+V));
                     }
                 }
+
                 gear.Faces.AddFaces(gearFaces);
                 bevelMeshes.Add(gear);
             }
