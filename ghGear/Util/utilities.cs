@@ -30,7 +30,7 @@ namespace ghGear.Util
             Side,
             ALL
         }
-        public List<double> Trigonometry(double U, double V, double W, TrigLaw law, Traingle GET)
+        public static List<double> Trigonometry(double U, double V, double W, TrigLaw law, Traingle GET)
         {
             double A = new double();
             double B = new double();
@@ -77,6 +77,115 @@ namespace ghGear.Util
             return ans;
         }
         #endregion
+
+        public static Curve RatchetPawl(Circle C, int T, double D, int pawlCount, double pRad, double Spring, out Curve SpringPawl)
+        {
+            List<Curve> rachets = new List<Curve>();
+            List<Curve> paws = new List<Curve>();
+            List<double> split = new List<double>();
+            for (int i = 0; i < T; i++)
+            {
+                double ta = (Math.PI * 2 / T) * i;
+                double tb = (Math.PI * 2 / T) * ((i + 1) % T);
+                //teeth build
+                Point3d start = new Circle(C.Plane, C.Radius - D).PointAt(ta); //fillet corner point
+                Vector3d va = C.PointAt(ta) - start; va.Unitize();
+                Vector3d vb = C.PointAt(tb) - start; vb.Unitize();
+                Curve lineA = new LineCurve(C.PointAt(ta), start);
+                Curve lineB = new LineCurve(C.PointAt(tb), start);
+                Curve teeth = Curve.CreateFilletCurves(lineA, start + (va * 0.1), lineB, start + (vb * 0.1), 0.2, true, true, true, 0.01, 0.01)[0];
+                rachets.Add(teeth);
+
+                //pawl build
+                double t_paw = (double)T / (double)pawlCount;
+                if (i == 0 || i + 1 > paws.Count * t_paw)
+                {
+                    ArcCurve innC = new ArcCurve(new Circle(C.Plane, C.Radius - D - pRad));
+                    Point3d pawP = start + (va * (D - 0.2));
+
+                    double side = Math.Sqrt(Math.Pow(C.Center.DistanceTo(pawP), 2) - Math.Pow(innC.Radius, 2));
+                    ArcCurve tanC = new ArcCurve(new Circle(pawP, side));
+
+                    //diection
+                    var ccx = Rhino.Geometry.Intersect.Intersection.CurveCurve(innC, tanC, 0.1, 0.1);
+                    Point3d tanP;
+                    if (i == 0)
+                        tanP = ccx[1].PointA;
+                    else
+                        tanP = ccx[0].PointA;
+
+                    List<double> angle = Trigonometry(C.Center.DistanceTo(pawP), pawP.DistanceTo(tanP), innC.Radius, TrigLaw.SSS, Traingle.Angle);
+                    Point3d depthP = pawP + ((Spring / Math.Sin(angle[1])) * Math.Tan(angle[1]) * -va);
+
+                    Vector3d tan2cen = C.Center - tanP; tan2cen.Unitize();
+                    Vector3d springY = Vector3d.CrossProduct(tan2cen, C.Normal); springY.Unitize();
+
+                    //pawl teeth
+                    List<Point3d> points = new List<Point3d> { tanP + (tan2cen * Spring), depthP, pawP, tanP };
+                    PolylineCurve pawl = new PolylineCurve(points);
+
+                    //spring arc
+                    ArcCurve springArc = new ArcCurve(new Arc(tanP + (tan2cen * Spring), tanP + (tan2cen * Spring * 1.5) - springY * Spring * 0.5, tanP + (tan2cen * Spring * 2)));
+                    Transform xform = Transform.Rotation(-Math.PI / (pawlCount * 3), C.Normal, C.Center);
+                    springArc.Transform(xform);
+                    ArcCurve extendSpring = new ArcCurve(new Arc(tanP + (tan2cen * Spring), tanP - pawP, springArc.PointAtStart));
+                    ArcCurve clipSpring = new ArcCurve(new Arc(tanP + (tan2cen * Spring) + tan2cen * Spring, tanP - pawP, springArc.PointAtEnd));
+                    clipSpring.Reverse();
+
+                    //innC intersection
+                    Line innRay = new Line(clipSpring.PointAtEnd, clipSpring.PointAtEnd - (tanP - pawP) * 2);
+                    Point3d rayStop = Point3d.Unset;
+                    double clt;
+                    var clx = Rhino.Geometry.Intersect.Intersection.LineCircle(innRay, new Circle(C.Plane, C.Radius - D - pRad),
+                        out clt, out rayStop, out clt, out rayStop);
+                    LineCurve innSpring = new LineCurve(clipSpring.PointAtEnd, rayStop);
+                    paws.Add(Curve.JoinCurves(new List<Curve> { pawl, extendSpring, springArc, clipSpring, innSpring })[0]);
+
+                    //split t values
+                    double splitA; double splitB;
+                    new ArcCurve(new Circle(C.Plane, C.Radius - D - pRad)).ClosestPoint(rayStop, out splitA);
+                    new ArcCurve(new Circle(C.Plane, C.Radius - D - pRad)).ClosestPoint(tanP, out splitB);
+
+                    split.Add(splitA); split.Add(splitB);
+                }
+            }
+
+            ArcCurve innCircle = new ArcCurve(new Circle(C.Plane, C.Radius - D - pRad));
+            Curve[] shatter = innCircle.Split(split);
+            for (int i = 0; i < shatter.Length; i += 2)
+            {
+                paws.Add(shatter[i]);
+            }
+
+            SpringPawl = Curve.JoinCurves(paws)[0];
+            return Curve.JoinCurves(rachets)[0];
+        }
+
+        public static Curve RatchetCover(Circle C, double D, double pRad)
+        {
+            ArcCurve co = new ArcCurve(new Circle(C.Plane, C.Radius - (D + pRad)));
+            ArcCurve ci = new ArcCurve(new Circle(C.Plane, C.Radius - ((D + pRad) * 2)));
+            co.Domain = ci.Domain = new Interval(0, 1);
+            List<double> ts = new List<double>();
+            for (double i = 0; i < 8; i++)
+            {
+                ts.Add(i / 8);
+            }
+            Curve[] shatterCo = co.Split(ts);
+            Curve[] shatterCi = ci.Split(ts);
+            List<Curve> shatter = new List<Curve>();
+            for (int i = 0; i < 8; i += 2)
+            {
+                shatter.Add(shatterCo[i]);
+                shatter.Add(shatterCi[i + 1]);
+                shatter.Add(new LineCurve(shatterCo[i].PointAtEnd, shatterCi[i + 1].PointAtStart));
+                Vector3d v = shatterCi[i + 1].PointAtEnd - C.Center; v.Unitize();
+                shatter.Add(new LineCurve(shatterCi[i + 1].PointAtEnd, shatterCi[i + 1].PointAtEnd + (v * (D + pRad))));
+            }
+            Curve covers = Curve.JoinCurves(shatter)[0];
+            Curve cover = Curve.CreateFilletCornersCurve(covers, (D + pRad) * 0.48, 0.001, 0.001);
+            return cover;
+        }
 
         public Curve involute(Circle baseCircle, double Angle, Circle max, Circle min)
         {

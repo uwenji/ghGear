@@ -59,6 +59,7 @@
     <Compile Include="Component\helicalRack.cs" />
     <Compile Include="Component\BevelGearComponent.cs" />
     <Compile Include="Component\helicalGear.cs" />
+    <Compile Include="Component\RatechPawl.cs" />
     <Compile Include="Component\pitchFromAxe.cs" />
     <Compile Include="Component\rack.cs" />
     <Compile Include="Component\pitchFromAngle.cs" />
@@ -90,6 +91,7 @@
     <Content Include="Resources\pitchFromAngle.png" />
     <Content Include="Resources\pitchFromAxe.png" />
     <Content Include="Resources\rack.png" />
+    <None Include="Resources\ratchet.png" />
     <Content Include="Resources\spurGear.png" />
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />

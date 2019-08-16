@@ -259,3 +259,8 @@ paket-files/
 # Python Tools for Visual Studio (PTVS)
 __pycache__/
 *.pyc
+/gear_test_00.jpg
+/gear_test_04.jpg
+/gear_test_03.jpg
+/gear_test_02.jpg
+/gear_test_01.jpg
